@@ -1,0 +1,66 @@
+{
+  "name": "TPM Parceiros - Envia Metas pro App",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "tpm-parceiros-metas",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-metas",
+      "name": "Webhook Buscar Metas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "tpm-parceiros-metas"
+    },
+    {
+      "parameters": {
+        "resource": "worksheet",
+        "operation": "getRows",
+        "workbook": { "__rl": true, "mode": "list", "value": "" },
+        "worksheet": { "__rl": true, "mode": "list", "value": "MetasVisitas" },
+        "options": {}
+      },
+      "id": "excel-read-metas",
+      "name": "Ler Metas (SharePoint)",
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "credentials": {
+        "microsoftExcelOAuth2Api": { "id": "", "name": "n8n DRE TPM" }
+      },
+      "notes": "Selecione TPM_PARCEIROS.xlsx, aba 'MetasVisitas'. Mesma credencial."
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst metas = items\n  .map(i => i.json)\n  .filter(row => (row.usuario || '').toString().trim() !== '' && (row.regiao || '').toString().trim() !== '')\n  .map(row => ({\n    usuario: row.usuario,\n    regiao: row.regiao,\n    meta_visitas_semana: parseInt(row.meta_visitas_semana) || 0,\n    semana_inicio: row.semana_inicio || '',\n    semana_fim: row.semana_fim || ''\n  }));\nreturn [{ json: metas }];"
+      },
+      "id": "filter-metas",
+      "name": "Filtrar e limpar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-metas",
+      "name": "Responder com JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Buscar Metas": { "main": [[{ "node": "Ler Metas (SharePoint)", "type": "main", "index": 0 }]] },
+    "Ler Metas (SharePoint)": { "main": [[{ "node": "Filtrar e limpar", "type": "main", "index": 0 }]] },
+    "Filtrar e limpar": { "main": [[{ "node": "Responder com JSON", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

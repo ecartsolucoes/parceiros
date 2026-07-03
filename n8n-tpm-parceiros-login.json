@@ -1,0 +1,66 @@
+{
+  "name": "TPM Parceiros - Login do Time",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tpm-parceiros-login",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-login",
+      "name": "Webhook Login",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "tpm-parceiros-login"
+    },
+    {
+      "parameters": {
+        "resource": "worksheet",
+        "operation": "getRows",
+        "workbook": { "__rl": true, "mode": "list", "value": "" },
+        "worksheet": { "__rl": true, "mode": "list", "value": "Usuarios" },
+        "options": {}
+      },
+      "id": "excel-read-users",
+      "name": "Ler Usuários (SharePoint)",
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "credentials": {
+        "microsoftExcelOAuth2Api": { "id": "", "name": "n8n DRE TPM" }
+      },
+      "notes": "Selecione o mesmo workbook (TPM_PARCEIROS.xlsx), aba 'Usuarios'. Mesma credencial reaproveitada do DRE."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compara usuário e senha vindos do app com as linhas da planilha.\n// Comparação simples, sem hash — combinado com o Diego que é só identificação, não segurança forte.\nconst body = $('Webhook Login').first().json.body || {};\nconst usuarioDigitado = (body.usuario || '').toString().trim().toLowerCase();\nconst senhaDigitada = (body.senha || '').toString();\n\nconst linhas = $input.all().map(i => i.json);\nconst achou = linhas.find(row =>\n  (row.usuario || '').toString().trim().toLowerCase() === usuarioDigitado &&\n  (row.senha || '').toString() === senhaDigitada &&\n  usuarioDigitado !== ''\n);\n\nif (achou) {\n  return [{ json: { ok: true, nome: achou.nome || achou.usuario } }];\n}\nreturn [{ json: { ok: false } }];"
+      },
+      "id": "check-login",
+      "name": "Conferir usuário e senha",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-login",
+      "name": "Responder com JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Login": { "main": [[{ "node": "Ler Usuários (SharePoint)", "type": "main", "index": 0 }]] },
+    "Ler Usuários (SharePoint)": { "main": [[{ "node": "Conferir usuário e senha", "type": "main", "index": 0 }]] },
+    "Conferir usuário e senha": { "main": [[{ "node": "Responder com JSON", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

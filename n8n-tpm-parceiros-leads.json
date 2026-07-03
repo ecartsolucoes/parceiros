@@ -1,0 +1,66 @@
+{
+  "name": "TPM Parceiros - Envia Leads pro App",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "tpm-parceiros-leads",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-leads",
+      "name": "Webhook Buscar Leads",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "tpm-parceiros-leads"
+    },
+    {
+      "parameters": {
+        "resource": "worksheet",
+        "operation": "getRows",
+        "workbook": { "__rl": true, "mode": "list", "value": "" },
+        "worksheet": { "__rl": true, "mode": "list", "value": "LeadsNovos" },
+        "options": {}
+      },
+      "id": "excel-read",
+      "name": "Ler Leads (SharePoint)",
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "credentials": {
+        "microsoftExcelOAuth2Api": { "id": "", "name": "n8n DRE TPM" }
+      },
+      "notes": "Selecione o mesmo workbook novo do check-in (ex: TPM_PARCEIROS.xlsx), aba 'LeadsNovos'. Mesma credencial reaproveitada do DRE."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Só devolve linhas com nome preenchido, já limpas\nconst items = $input.all();\nconst leads = items\n  .map(i => i.json)\n  .filter(row => (row.nome || '').toString().trim() !== '' && (row.lead_id || '').toString().trim() !== '')\n  .map(row => ({\n    lead_id: row.lead_id,\n    nome: row.nome,\n    tipo: row.tipo || '',\n    regiao: row.regiao || '',\n    endereco: row.endereco || '',\n    prioridade: row.prioridade || '',\n    observacao: row.observacao || '',\n    atribuido_por: row.atribuido_por || ''\n  }));\nreturn [{ json: leads }];"
+      },
+      "id": "filter-clean",
+      "name": "Filtrar e limpar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-leads",
+      "name": "Responder com JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Buscar Leads": { "main": [[{ "node": "Ler Leads (SharePoint)", "type": "main", "index": 0 }]] },
+    "Ler Leads (SharePoint)": { "main": [[{ "node": "Filtrar e limpar", "type": "main", "index": 0 }]] },
+    "Filtrar e limpar": { "main": [[{ "node": "Responder com JSON", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

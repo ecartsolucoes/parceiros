@@ -1,0 +1,78 @@
+{
+  "name": "TPM Parceiros - Recebe Check-in do Urso",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tpm-parceiros-checkin",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-checkin",
+      "name": "Webhook Check-in",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "tpm-parceiros-checkin"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza e valida o payload antes de gravar\nconst b = $input.first().json.body || $input.first().json;\nreturn [{\n  json: {\n    enviado_em: b.enviado_em || new Date().toISOString(),\n    parceiro_id: b.parceiro_id || '',\n    parceiro_nome: b.parceiro_nome || '',\n    parceiro_tipo: b.parceiro_tipo || '',\n    regiao: b.regiao || '',\n    endereco: b.endereco || '',\n    estagio: b.estagio || '',\n    com_quem: b.com_quem || '',\n    papel: b.papel || '',\n    nota: b.nota || '',\n    material_cartoes: b.material_cartoes ? 'Sim' : 'Não',\n    material_display: b.material_display ? 'Sim' : 'Não',\n    vale_qtd: b.vale_qtd || 0,\n    vale_valor_unit: b.vale_valor_unit || 0,\n    vale_total: b.vale_total || 0,\n    proximo_passo: b.proximo_passo || '',\n    proximo_data: b.proximo_data || '',\n    gps_lat: b.gps_lat || '',\n    gps_lng: b.gps_lng || '',\n    vendedor: b.vendedor || 'Urso'\n  }\n}];"
+      },
+      "id": "normalize",
+      "name": "Normalizar dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "resource": "worksheet",
+        "operation": "appendData",
+        "workbook": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "worksheet": {
+          "__rl": true,
+          "mode": "list",
+          "value": "CheckinsParceiros"
+        },
+        "dataMode": "autoMapInputData",
+        "options": {}
+      },
+      "id": "excel-append",
+      "name": "Gravar no Excel (SharePoint)",
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2,
+      "position": [700, 300],
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "",
+          "name": "n8n DRE TPM"
+        }
+      },
+      "notes": "IMPORTANTE: selecione um workbook NOVO e separado do DRE (ex: TPM_Parceiros.xlsx), na aba 'CheckinsParceiros'. Pode reaproveitar a mesma credencial Azure (n8n DRE TPM) — só não aponte pro mesmo arquivo do DRE. Se a aba não existir, crie-a primeiro com a linha de cabeçalho (veja COMO-CONFIGURAR-SYNC.md)."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Responder OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Check-in": { "main": [[{ "node": "Normalizar dados", "type": "main", "index": 0 }]] },
+    "Normalizar dados": { "main": [[{ "node": "Gravar no Excel (SharePoint)", "type": "main", "index": 0 }]] },
+    "Gravar no Excel (SharePoint)": { "main": [[{ "node": "Responder OK", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}
